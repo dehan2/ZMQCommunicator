@@ -18,15 +18,15 @@ public:
 	string m_receiveMessage;
 	string m_sendMessage;
 
-	mutex m_mutexForServer;
-	mutex m_mutexForClient;
+	mutex* m_mutexForServer;
+	mutex* m_mutexForClient;
 
 	ZMQCommunicator() = delete;
 	ZMQCommunicator(context_t& context);
 	~ZMQCommunicator();
 
-	inline const mutex& get_mutex_for_server() const { return m_mutexForServer; }
-	inline const mutex& get_mutex_for_client() const { return m_mutexForClient; }
+	inline const mutex* get_mutex_for_server() const { return m_mutexForServer; }
+	inline const mutex* get_mutex_for_client() const { return m_mutexForClient; }
 
 	inline void bind_server(const string& address) { m_serverSocket.bind(address); }
 	inline void connect_client(const string& address) { m_clientSocket.connect(address); }
