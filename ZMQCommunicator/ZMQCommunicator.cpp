@@ -38,6 +38,17 @@ bool ZMQCommunicator::reply_to_client(const string& msg)
 
 
 
+bool ZMQCommunicator::send_message_and_receive_reply(const string& msg, string& reply)
+{
+	bool result = send_message(msg);
+	if (result == true)
+		reply = receive_reply();
+
+	return result;
+}
+
+
+
 bool ZMQCommunicator::send_message(const string& msg)
 {
 	message_t message(msg.size());
@@ -45,6 +56,8 @@ bool ZMQCommunicator::send_message(const string& msg)
 	bool result = m_clientSocket.send(message);
 	return result;
 }
+
+
 
 string ZMQCommunicator::receive_reply()
 {
