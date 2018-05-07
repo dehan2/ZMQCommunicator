@@ -46,6 +46,15 @@ def command_to_drone_parallel(message, drones):
         arm_and_takeoff(drone, altitude)
         return "Take off"
 
+    if commandList[0]=='goto':
+        drone = drones[droneID]
+        speed = float(commandList[2])
+        x = float(commandList[3])
+        y = float(commandList[4])
+        z = float(commandList[5])
+        go_to(drone, speed, x, y, z)
+        return "goto"
+
     if commandList[0]=='land':
         drone = drones[droneID]
         land(drone)
@@ -92,9 +101,22 @@ def command_to_drone_serial(message, droneAddresses):
         return "Take off"
 
     if commandList[0]=='land':
-        drone = drones[droneID]
+        address = droneAddresses[droneID]
+        drone = connect(address)
         land(drone)
         return "Landing"
+
+    if commandList[0]=='goto':
+        address = droneAddresses[droneID]
+        drone = connect(address)
+        speed = float(commandList[2])
+        x = float(commandList[3])
+        y = float(commandList[4])
+        z = float(commandList[5])
+        go_to(drone, speed, x, y, z)
+	time.sleep(0.01)
+        drone.close()
+        return "goto"
 
     if commandList[0]=='battery':
         address = droneAddresses[droneID]
@@ -119,7 +141,7 @@ def command_to_drone_serial(message, droneAddresses):
 
 #### MAIN ####
 communicator = PyZMQCommunicator()
-communicator.bind_server("tcp://*:5556")
+communicator.bind_server("tcp://166.104.145.106:5556")
 communicator.connect_client("tcp://localhost:5555")
 
 bSerial = raw_input("Do you want serial communication?(y/n):")

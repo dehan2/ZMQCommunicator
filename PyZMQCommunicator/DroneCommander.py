@@ -1,6 +1,17 @@
 from dronekit import *
 from math import sin, radians, cos
 
+homeLat = 37.555010
+homeLon = 127.045343
+homeAlt = 0
+
+RADIUS_EARTH_EQUATOR = 6378245.0
+RADIUS_EARTH_POLAR = 6356863.0
+Radius_Earth = RADIUS_EARTH_POLAR + (RADIUS_EARTH_EQUATOR - RADIUS_EARTH_POLAR) * sin(radians(homeLat))
+Base_Dist_Longuitude = 2.0 * math.pi * Radius_Earth / 360.0 * cos(radians(homeLat))
+Base_Dist_Latitude = 2.0 * math.pi * Radius_Earth / 360.0
+
+
 def arm_and_takeoff(drone, aTargetAltitude):
     """
     Arms vehicle and fly to aTargetAltitude.
@@ -51,23 +62,10 @@ def take_off(drone, targetAlt):
 
 
 
-def go_to(drone, airspeed, targetLatitude, targetLongitude, targetAltitude):
+def go_to(drone, airspeed, x, y, z):
     drone.airspeed=airspeed
-    point = LocationGlobalRelative(targetLatitude, targetLongitude, targetAltitude)
-    drone.simple_goto(point)
-
-
-
-def get_target_gps(x, y, z, homeLat, homeLon, homeAlt):
-    RADIUS_EARTH_EQUATOR = 6378245
-    RADIUS_EARTH_POLAR = 6356863
-    
-    Radius_Earth = RADIUS_EARTH_POLAR + (RADIUS_EARTH_EQUATOR - RADIUS_EARTH_POLAR) * sin(radians(homeLat))
-    Base_Dist_Longuitude = 2.0 * math.pi * Radius_Earth / 360.0 * cos(radians(homeLat))
-    Base_Dist_Latitude = 2.0 * math.pi * Radius_Earth / 360.0
-
-    gpsCoord = LocationGlobalRelative(homeLat + (y / Base_Dist_Latitude), homeLon + (x / Base_Dist_Longuitude), homeAlt + z )
-    return gpsCoord
+    gps = translate_coord_to_gps(x, y, z)
+    drone.simple_goto(gps)
 
 
 
@@ -81,4 +79,13 @@ def get_battery(drone):
     return drone.battery
 
 def get_location(drone):
-    return drone.location.global_relative_frame
+    gps = drone.location.global_relative_frame
+    coord = translate_gps_to_coord(gps[0], gps[1], gps[2])
+    return coord
+
+def translate_coord_to_gps(x, y, z):
+    return LocationGlobalRelative(homeLat + (y / Base_Dist_Latitude), homeLon + (x / Base_Dist_Longuitude), homeAlt + z )
+
+def translate_gps_to_coord(lat, lon, alt):
+    coord = [(lon - homeLon)*Base_Dist_Longuitude, (lat - homeLat)*Base_Dist_Latitude, alt - homeAlt]
+    return coord
