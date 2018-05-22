@@ -6,20 +6,19 @@
 #include <mutex>
 
 using namespace std;
-using namespace zmq;
 
 class ZMQCommunicator
 {
 private:
-	socket_t m_serverSocket;
-	socket_t m_clientSocket;
+	zmq::context_t context;
+	zmq::socket_t m_serverSocket;
+	zmq::socket_t m_clientSocket;
 
 	string m_receiveMessage;
 	mutex m_mutexForServer;
 
 public:
-	ZMQCommunicator() = delete;
-	ZMQCommunicator(context_t& context);
+	ZMQCommunicator();
 	~ZMQCommunicator();
 
 	inline const mutex& get_mutex_for_server() const { return m_mutexForServer; }

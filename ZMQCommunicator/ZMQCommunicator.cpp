@@ -1,8 +1,9 @@
 #include "ZMQCommunicator.h"
 
 
-ZMQCommunicator::ZMQCommunicator(context_t& context)
-	:m_serverSocket(context, ZMQ_REP), m_clientSocket(context, ZMQ_REQ)
+
+ZMQCommunicator::ZMQCommunicator()
+	:context(zmq::context_t(1)), m_serverSocket(context, ZMQ_REP), m_clientSocket(context, ZMQ_REQ)
 {
 }
 
@@ -16,7 +17,7 @@ ZMQCommunicator::~ZMQCommunicator()
 
 string ZMQCommunicator::receive_message()
 {
-	message_t request;
+	zmq::message_t request;
 	m_serverSocket.recv(&request);
 	char* msg = new char[request.size() + 1];
 	memcpy(msg, request.data(), request.size());
@@ -30,7 +31,7 @@ string ZMQCommunicator::receive_message()
 
 bool ZMQCommunicator::reply_to_client(const string& msg)
 {
-	message_t message(msg.size());
+	zmq::message_t message(msg.size());
 	memcpy(message.data(), msg.data(), msg.size());
 	bool result = m_serverSocket.send(message);
 	return result;
@@ -51,7 +52,7 @@ bool ZMQCommunicator::send_message_and_receive_reply(const string& msg, string& 
 
 bool ZMQCommunicator::send_message(const string& msg)
 {
-	message_t message(msg.size());
+	zmq::message_t message(msg.size());
 	memcpy(message.data(), msg.data(), msg.size());
 	bool result = m_clientSocket.send(message);
 	return result;
@@ -61,7 +62,7 @@ bool ZMQCommunicator::send_message(const string& msg)
 
 string ZMQCommunicator::receive_reply()
 {
-	message_t request;
+	zmq::message_t request;
 	m_clientSocket.recv(&request);
 	char* msg = new char[request.size() + 1];
 	memcpy(msg, request.data(), request.size());
