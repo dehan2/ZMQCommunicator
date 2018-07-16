@@ -5,6 +5,9 @@ from PyZMQCommunicator import PyZMQCommunicator
 from DroneCommander import *
 from MissionDesigner import *
 
+MAV_MODE_AUTO   = 4
+MAV_MODE_GUIDED   = 8
+
 def run_receiver(communicator, drones):
     while True:
         print("Waiting for receiving message...")
@@ -16,19 +19,34 @@ def run_receiver(communicator, drones):
 
 
 def command_to_drone(message, drones):
-    commandList = message.split(); 
+    commandList = message.split();
+    
+    if commandList[0]=='loadMission':
+        fileName = commandList[1]
+        load_mission(drones, fileName)
+        return "mission loaded"
+
     droneID = int(commandList[1])
 
     if commandList[0]=='connect':
-        address = commandList[2]
-        try:
+        systemID = int(commandList[2])
+        address = commandList[3]
+        if len(drones)>droneID:
+            drones[droneID] = connect(address)
+        else:
+            vehicle = connect(address)
+            drones.append(vehicle)
+        return 'Connected '+str(droneID)
+
+        '''try:
             if len(drones)>droneID:
-                drones[droneID] = connect(address, heartbeat_timeout=5)
+                drones[droneID] = connect(address)
             else:
-                drones.append(connect(address, heartbeat_timeout=5))
+                vehicle = connect(address)
+                drones.append(vehicle)
             return 'Connected '+str(droneID)
         except APIException:
-            return 'Disconnected '+str(droneID)
+            return 'Disconnected '+str(droneID)'''
 
     # the commands below requires connection to drone
     drone = drones[droneID]
@@ -36,13 +54,13 @@ def command_to_drone(message, drones):
          return 'ConnectionLost '+str(droneID)
 
     if commandList[0]=='arm':
-        change_mode(drone, "STABILIZE")
+        #change_mode(drone, "STABILIZE")
         arm_only(drone)
         return "Armed"
 
     if commandList[0]=='takeoff':
         altitude = float(commandList[2])
-        change_mode(drone, "GUIDED")
+        PX4setMode(drone, MAV_MODE_GUIDED)
         result = arm_and_takeoff(drone, altitude)
         if result==True:
             return "Take off"
@@ -73,11 +91,12 @@ def command_to_drone(message, drones):
         return 'mode '+str(droneID)+' '+str(drone.mode.name)
 
     if commandList[0]=='auto':
-        change_mode(drone, 'AUTO')
+        #change_mode(drone, 'AUTO')
+        PX4setMode(drone, MAV_MODE_AUTO)
         return 'changeMode '+str(droneID)+' '+str(drone.mode.name)
 
     if commandList[0]=='guided':
-        change_mode(drone, 'GUIDED')
+        PX4setMode(drone, MAV_MODE_GUIDED)
         return 'changeMode '+str(droneID)+' '+str(drone.mode.name)
 
     if commandList[0]=='speed':
@@ -95,20 +114,26 @@ def command_to_drone(message, drones):
         add_loiter(drone, loiterTime)
         return 'add step '+str(droneID)+' '+str(speed)+' '+str(latitude)+' '+str(longitude)+' '+str(altitude)+' '+str(loiterTime)
      
-    if commandList[0]=='clear':
+    if commandList[0]=='clearMission':
         clear_mission(drone)
         return 'clear mission '+str(droneID)
 
-    if commandList[0]=='upload':
+    if commandList[0]=='uploadMission':
         upload_mission(drone)
         return 'upload mission '+str(droneID)
 
-    if commandList[0]=='checkStepArrival':
+    if commandList[0]=='doesArrive':
         comID = drone.commands.next
         if comID%3 == 0:
             return 'true'
         else:
             return 'false'
+
+    if commandList[0]=='jumpStep':
+        targetStepID = int(commandList[2])
+        targetCommandID = 3*targetStepID+1
+        drone.commands.next = targetCommandID
+        return 'jumpStep '+str(droneID)+' '+str(targetStepID)
 
     if commandList[0]=='getStepID':
         comID = drone.commands.next
@@ -123,6 +148,20 @@ def command_to_drone(message, drones):
         drone.commands.next = drone.commands.next+1
         comID = drone.commands.next
         return 'nextCommandID '+str(droneID)+' '+str(comID)
+
+    
+
+    if commandList[0]=='printMission':
+        print_mission(drone, droneID)
+        return 'print mission '+str(droneID)
+
+    if commandList[0]=='adjustMission':
+        adjust_mission(drone, droneID)
+        return 'adjust mission '+str(droneID)
+
+    if commandList[0]=='close':
+        drone.close()
+        return 'close mission '+str(droneID)
 
     if commandList[0]=='addwp':
         latitude = float(commandList[2])
@@ -151,11 +190,23 @@ def command_to_drone(message, drones):
         return 'add loiter '+str(droneID)
 
 
+def read_port(fileName):
+    portFile = open(fileName, 'r')
+    lines = portFile.readlines()
+    ports = list()
+    for line in lines:
+        ports.append(int(line))
+    return ports
+
 #### MAIN ####
 communicator = PyZMQCommunicator()
-communicator.bind_server("tcp://*:5556")
-communicator.connect_client("tcp://localhost:5555")
+communicator.bind_server('tcp://*:5556')
+
+portNums = read_port('port.txt') 
+
 drones = list()
+for portNum in portNums:
+    drones.append(connect('127.0.0.1:'+str(portNum)))
 
 t1 = Thread(target=run_receiver, args=(communicator, drones,))
 t1.daemon = True
